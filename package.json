@@ -1,6 +1,6 @@
 {
   "name": "node-event-stream",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lightweight event streaming for Node.js",
   "main": "server.js",
   "scripts": {
