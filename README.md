@@ -1,9 +1,9 @@
-# Log Flow
+# Node Event Streaming
 
-Log Flow is a lightweight **event-driven pub/sub library for Node.js**.
+Node Event Streaming is a lightweight **event-driven pub/sub library for Node.js**.
 It allows applications to publish and subscribe to events in a simple and efficient way, similar to a minimal streaming system.
 
-The goal of Log Flow is to provide a **simple alternative to heavy message brokers** when you only need lightweight event streaming inside your Node.js services.
+The goal of Node Event Streaming is to provide a **simple alternative to heavy message brokers** when you only need lightweight event streaming inside your Node.js services.
 
 ---
 
@@ -21,7 +21,7 @@ The goal of Log Flow is to provide a **simple alternative to heavy message broke
 ## Installation
 
 ```bash
-npm install log-flow
+npm i node-event-stream
 ```
 
 ---
@@ -75,7 +75,7 @@ Example event stored in the system:
 
 ## Use Cases
 
-Log Flow can be useful for:
+Node Event Streaming can be useful for:
 
 - Real-time location tracking
 - Event-driven microservices
@@ -87,7 +87,7 @@ Log Flow can be useful for:
 
 ## Project Goal
 
-Log Flow was created to explore **event streaming concepts similar to distributed log systems**, but in a much simpler and lightweight form suitable for Node.js applications.
+Node Event Streaming was created to explore **event streaming concepts similar to distributed log systems**, but in a much simpler and lightweight form suitable for Node.js applications.
 
 ---
 
