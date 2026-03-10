@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import path from 'path';
 import { Readable } from 'stream';
 import {
   BusOptions,
@@ -12,11 +14,9 @@ import {
   TopicStats,
 } from '../interface/interface';
 import RetentionEngine from '../retention/retentionEngine';
-import DiskStore from '../storage/diskStorage';
 import BufferMemory from '../storage/bufferMemory';
+import DiskStore from '../storage/diskStorage';
 import SecondaryIndex from '../storage/secondaryIndex';
-import path from 'path';
-import * as fs from 'fs';
 
 interface Consumer<T> {
   groupId: string;
@@ -67,7 +67,7 @@ export class Topic<T = Record<string, unknown>> {
   }
 }
 
-export class MessageBus {
+export class EventStreaming {
   private topics = new Map<string, Topic>();
   private offsetFile: string;
   private retention: RetentionEngine | null = null;
@@ -354,7 +354,7 @@ export class MessageBus {
 
   // ── Retention / Cleanup ───────────────────────────────────────────────────
 
-  cleanup(
+  private cleanup(
     topicName?: string,
     policyOverride?: RetentionPolicy,
   ): CleanupReport[] {

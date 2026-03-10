@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// RETENTION ENGINE
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { RetentionPolicy, SegmentMeta } from '../interface/interface';
 
 export default class RetentionEngine {

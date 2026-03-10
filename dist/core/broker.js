@@ -36,14 +36,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MessageBus = exports.Topic = void 0;
+exports.EventStreaming = exports.Topic = void 0;
+const fs = __importStar(require("fs"));
+const path_1 = __importDefault(require("path"));
 const stream_1 = require("stream");
 const retentionEngine_1 = __importDefault(require("../retention/retentionEngine"));
-const diskStorage_1 = __importDefault(require("../storage/diskStorage"));
 const bufferMemory_1 = __importDefault(require("../storage/bufferMemory"));
+const diskStorage_1 = __importDefault(require("../storage/diskStorage"));
 const secondaryIndex_1 = __importDefault(require("../storage/secondaryIndex"));
-const path_1 = __importDefault(require("path"));
-const fs = __importStar(require("fs"));
 class Topic {
     constructor(name, dataDir) {
         this.name = name;
@@ -83,7 +83,7 @@ class Topic {
     }
 }
 exports.Topic = Topic;
-class MessageBus {
+class EventStreaming {
     constructor(dataDir = './msgbus-data', options = {}) {
         var _a;
         this.dataDir = dataDir;
@@ -407,4 +407,4 @@ class MessageBus {
             topic.disk.close();
     }
 }
-exports.MessageBus = MessageBus;
+exports.EventStreaming = EventStreaming;

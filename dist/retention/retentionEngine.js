@@ -1,7 +1,4 @@
 "use strict";
-// ─────────────────────────────────────────────────────────────────────────────
-// RETENTION ENGINE
-// ─────────────────────────────────────────────────────────────────────────────
 Object.defineProperty(exports, "__esModule", { value: true });
 class RetentionEngine {
     constructor(policy) {

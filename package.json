@@ -1,5 +1,5 @@
 {
-  "name": "node-event-stream",
+  "name": "node-event-streaming",
   "version": "1.0.2",
   "description": "Lightweight event streaming for Node.js",
   "main": "server.js",
@@ -10,10 +10,8 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "nodemon": "^3.1.14"
-  },
   "devDependencies": {
-    "@types/node": "^25.3.5"
+    "@types/node": "^25.3.5",
+    "nodemon": "^3.1.14"
   }
 }
