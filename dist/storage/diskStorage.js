@@ -189,7 +189,7 @@ class DiskStore {
     deleteSegment(baseOffset) {
         const file = path.join(this.segDir, String(baseOffset).padStart(10, '0') + '.log');
         if (baseOffset === this.currentSegmentBase) {
-            console.warn(`[bus] skipping active segment ${baseOffset}`);
+            console.warn(`[stream] skipping active segment ${baseOffset}`);
             return 0;
         }
         try {
@@ -198,7 +198,7 @@ class DiskStore {
             return size;
         }
         catch (e) {
-            console.error(`[bus] failed to delete segment ${file}:`, e);
+            console.error(`[stream] failed to delete segment ${file}:`, e);
             return 0;
         }
     }

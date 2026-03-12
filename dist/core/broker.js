@@ -84,7 +84,7 @@ class Topic {
 }
 exports.Topic = Topic;
 class EventStreaming {
-    constructor(dataDir = './msgbus-data', options = {}) {
+    constructor(dataDir = './msg-data', options = {}) {
         var _a;
         this.dataDir = dataDir;
         this.options = options;
@@ -102,12 +102,12 @@ class EventStreaming {
         if (intervalMin > 0 && this.retention) {
             const ms = intervalMin * 60000;
             this.cleanupTimer = setInterval(() => {
-                console.log('[bus] auto-cleanup running...');
+                console.log('[node-event-stream] auto-cleanup running...');
                 this.cleanup();
             }, ms);
             if (this.cleanupTimer.unref)
                 this.cleanupTimer.unref();
-            console.log(`[bus] auto-cleanup scheduled every ${intervalMin} min`);
+            console.log(`[node-event-stream] auto-cleanup scheduled every ${intervalMin} min`);
         }
     }
     getTopic(name) {
@@ -186,12 +186,12 @@ class EventStreaming {
                 try {
                     const p = consumer.handler(record);
                     if (p instanceof Promise)
-                        p.then(() => this.scheduleOffsetSave()).catch((e) => console.error(`[bus][${consumer.groupId}]`, e));
+                        p.then(() => this.scheduleOffsetSave()).catch((e) => console.error(`[node-event-stream][${consumer.groupId}]`, e));
                     else
                         this.scheduleOffsetSave();
                 }
                 catch (e) {
-                    console.error(`[bus][${consumer.groupId}]`, e);
+                    console.error(`[node-event-stream][${consumer.groupId}]`, e);
                 }
             }
         }
@@ -232,7 +232,7 @@ class EventStreaming {
                 consumer.handler(rec);
             }
             catch (e) {
-                console.error(`[bus][${consumer.groupId}] catchup`, e);
+                console.error(`[node-event-stream][${consumer.groupId}] catchup`, e);
             }
         }
         for (const rec of topic.memory.from(consumer.offset)) {
@@ -241,7 +241,7 @@ class EventStreaming {
                 consumer.handler(rec);
             }
             catch (e) {
-                console.error(`[bus][${consumer.groupId}] catchup`, e);
+                console.error(`[node-event-stream][${consumer.groupId}] catchup`, e);
             }
         }
         this.saveOffsets();
@@ -331,7 +331,7 @@ class EventStreaming {
             ? new retentionEngine_1.default(policyOverride)
             : this.retention;
         if (!engine) {
-            console.warn('[bus] cleanup() called but no retention policy is set.');
+            console.warn('[node-event-stream] cleanup() called but no retention policy is set.');
             return [];
         }
         const targets = topicName
@@ -362,7 +362,7 @@ class EventStreaming {
             const skippedConsumers = [];
             for (const consumer of topic.consumers.values()) {
                 if (consumer.offset < earliestSurviving) {
-                    console.warn(`[bus][${topic.name}] consumer "${consumer.groupId}" at offset ${consumer.offset} ` +
+                    console.warn(`[node-event-stream][${topic.name}] consumer "${consumer.groupId}" at offset ${consumer.offset} ` +
                         `skipped to ${earliestSurviving} (segment deleted)`);
                     skippedConsumers.push({
                         groupId: consumer.groupId,
@@ -388,7 +388,7 @@ class EventStreaming {
                 reasons,
                 skippedConsumers,
             };
-            console.log(`[bus] cleanup [${topic.name}]: ${toDelete.length} segments deleted, ` +
+            console.log(`[node-event-stream] cleanup [${topic.name}]: ${toDelete.length} segments deleted, ` +
                 `${(bytesFreed / 1e6).toFixed(1)} MB freed, ${recordsDropped} records dropped`);
             reports.push(report);
         }

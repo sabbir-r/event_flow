@@ -79,7 +79,7 @@ export class EventStreaming {
   private saveOffsetsPending = false;
 
   constructor(
-    private readonly dataDir: string = './msgbus-data',
+    private readonly dataDir: string = './msg-data',
     private readonly options: StreamOptions = {},
   ) {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -93,11 +93,13 @@ export class EventStreaming {
     if (intervalMin > 0 && this.retention) {
       const ms = intervalMin * 60_000;
       this.cleanupTimer = setInterval(() => {
-        console.log('[bus] auto-cleanup running...');
+        console.log('[node-event-stream] auto-cleanup running...');
         this.cleanup();
       }, ms);
       if ((this.cleanupTimer as any).unref) (this.cleanupTimer as any).unref();
-      console.log(`[bus] auto-cleanup scheduled every ${intervalMin} min`);
+      console.log(
+        `[node-event-stream] auto-cleanup scheduled every ${intervalMin} min`,
+      );
     }
   }
 
@@ -201,11 +203,11 @@ export class EventStreaming {
           const p = consumer.handler(record);
           if (p instanceof Promise)
             p.then(() => this.scheduleOffsetSave()).catch((e) =>
-              console.error(`[bus][${consumer.groupId}]`, e),
+              console.error(`[node-event-stream][${consumer.groupId}]`, e),
             );
           else this.scheduleOffsetSave();
         } catch (e) {
-          console.error(`[bus][${consumer.groupId}]`, e);
+          console.error(`[node-event-stream][${consumer.groupId}]`, e);
         }
       }
     }
@@ -257,7 +259,7 @@ export class EventStreaming {
       try {
         consumer.handler(rec);
       } catch (e) {
-        console.error(`[bus][${consumer.groupId}] catchup`, e);
+        console.error(`[node-event-stream][${consumer.groupId}] catchup`, e);
       }
     }
 
@@ -266,7 +268,7 @@ export class EventStreaming {
       try {
         consumer.handler(rec);
       } catch (e) {
-        console.error(`[bus][${consumer.groupId}] catchup`, e);
+        console.error(`[node-event-stream][${consumer.groupId}] catchup`, e);
       }
     }
 
@@ -373,7 +375,9 @@ export class EventStreaming {
       : this.retention;
 
     if (!engine) {
-      console.warn('[bus] cleanup() called but no retention policy is set.');
+      console.warn(
+        '[node-event-stream] cleanup() called but no retention policy is set.',
+      );
       return [];
     }
 
@@ -413,7 +417,7 @@ export class EventStreaming {
       for (const consumer of topic.consumers.values()) {
         if (consumer.offset < earliestSurviving) {
           console.warn(
-            `[bus][${topic.name}] consumer "${consumer.groupId}" at offset ${consumer.offset} ` +
+            `[node-event-stream][${topic.name}] consumer "${consumer.groupId}" at offset ${consumer.offset} ` +
               `skipped to ${earliestSurviving} (segment deleted)`,
           );
           skippedConsumers.push({
@@ -445,7 +449,7 @@ export class EventStreaming {
       };
 
       console.log(
-        `[bus] cleanup [${topic.name}]: ${toDelete.length} segments deleted, ` +
+        `[node-event-stream] cleanup [${topic.name}]: ${toDelete.length} segments deleted, ` +
           `${(bytesFreed / 1e6).toFixed(1)} MB freed, ${recordsDropped} records dropped`,
       );
 
