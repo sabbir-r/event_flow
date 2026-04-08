@@ -43,6 +43,7 @@ export interface RetentionPolicy {
 export interface StreamOptions {
   retention?: RetentionPolicy;
   cleanupIntervalMinutes?: number;
+  compression?: boolean;
 }
 
 export interface TopicStats {

@@ -35,11 +35,13 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const zlib_1 = require("zlib");
 const MAX_SEGMENT_BYTES = 256 * 1024 * 1024;
 const FLUSH_INTERVAL_MS = 50;
 const FLUSH_BATCH_SIZE = 500;
+const GZIP_LEVEL = 1;
 class DiskStore {
-    constructor(dir, topic) {
+    constructor(dir, topic, compress = false) {
         this.dir = dir;
         this.topic = topic;
         this.currentFd = -1;
@@ -50,6 +52,7 @@ class DiskStore {
         this.diskQueue = [];
         this.MAX_QUEUE = 100000;
         this.isWorkerRunning = false;
+        this.compress = compress;
         fs.mkdirSync(this.segDir, { recursive: true });
         this.openOrCreateActiveSegment();
         this.startWorker();
@@ -115,8 +118,20 @@ class DiskStore {
             const byteLength = Buffer.byteLength(payload, 'utf-8');
             if (this.currentSegmentSize + byteLength >= MAX_SEGMENT_BYTES)
                 this.openSegment(this.currentSegmentBase + 1);
-            fs.writeSync(this.currentFd, payload, null, 'utf-8');
-            this.currentSegmentSize += byteLength;
+            if (this.compress) {
+                // compressed — [4-byte length][gzip data]
+                const raw = Buffer.from(payload, 'utf-8');
+                const compressed = (0, zlib_1.gzipSync)(raw, { level: GZIP_LEVEL });
+                const header = Buffer.alloc(4);
+                header.writeUInt32BE(compressed.length, 0);
+                fs.writeSync(this.currentFd, Buffer.concat([header, compressed]));
+                this.currentSegmentSize += 4 + compressed.length;
+            }
+            else {
+                // raw — plain JSON lines
+                fs.writeSync(this.currentFd, payload, null, 'utf-8');
+                this.currentSegmentSize += byteLength;
+            }
             this.totalFlushed += batch.length;
             if (this.diskQueue.length > 0)
                 setImmediate(tick);
@@ -172,18 +187,49 @@ class DiskStore {
         }
     }
     *replayAll() {
+        const meta = this.readMeta();
         for (const file of this.listPaths()) {
-            const content = fs.readFileSync(file, 'utf-8');
-            for (const line of content.split('\n')) {
-                if (!line.trim())
-                    continue;
-                try {
-                    yield JSON.parse(line);
-                }
-                catch (_a) {
-                    /* skip */
+            if (meta.compression) {
+                yield* this.readCompressed(file);
+            }
+            else {
+                yield* this.readRaw(file);
+            }
+        }
+    }
+    *readRaw(file) {
+        const content = fs.readFileSync(file, 'utf-8');
+        for (const line of content.split('\n')) {
+            if (!line.trim())
+                continue;
+            try {
+                yield JSON.parse(line);
+            }
+            catch (_a) { }
+        }
+    }
+    *readCompressed(file) {
+        const buf = fs.readFileSync(file);
+        let pos = 0;
+        while (pos + 4 <= buf.length) {
+            const chunkLen = buf.readUInt32BE(pos);
+            pos += 4;
+            if (pos + chunkLen > buf.length)
+                break;
+            const compressed = buf.subarray(pos, pos + chunkLen);
+            pos += chunkLen;
+            try {
+                const raw = (0, zlib_1.gunzipSync)(compressed).toString('utf-8');
+                for (const line of raw.split('\n')) {
+                    if (!line.trim())
+                        continue;
+                    try {
+                        yield JSON.parse(line);
+                    }
+                    catch (_a) { }
                 }
             }
+            catch (_b) { }
         }
     }
     buildSegmentMetas() {
@@ -237,6 +283,26 @@ class DiskStore {
             console.error(`[stream] failed to delete segment ${file}:`, e);
             return 0;
         }
+    }
+    isCompressed(file) {
+        const fd = fs.openSync(file, 'r');
+        const buf = Buffer.alloc(2);
+        fs.readSync(fd, buf, 0, 2, 0);
+        fs.closeSync(fd);
+        return buf[0] === 0x1f && buf[1] === 0x8b;
+    }
+    writeMeta() {
+        const meta = { compression: this.compress };
+        fs.writeFileSync(path.join(this.segDir, '_meta.json'), JSON.stringify(meta));
+    }
+    readMeta() {
+        try {
+            const metaPath = path.join(this.segDir, '_meta.json');
+            if (fs.existsSync(metaPath))
+                return JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        }
+        catch (_a) { }
+        return { compression: false };
     }
     get totalDiskBytes() {
         return this.listPaths().reduce((s, f) => {

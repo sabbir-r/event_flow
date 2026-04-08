@@ -20,7 +20,8 @@ export default class DiskStore {
     private diskQueue;
     private readonly MAX_QUEUE;
     private isWorkerRunning;
-    constructor(dir: string, topic: string);
+    private readonly compress;
+    constructor(dir: string, topic: string, compress?: boolean);
     private get segDir();
     private listPaths;
     private openSegment;
@@ -30,8 +31,13 @@ export default class DiskStore {
     flush(): void;
     readByOffsets(offsets: Set<number>, getSegment?: (offset: number) => number | undefined): Generator<LogRecord>;
     replayAll(): Generator<LogRecord>;
+    private readRaw;
+    private readCompressed;
     buildSegmentMetas(): SegmentMeta[];
     deleteSegment(baseOffset: number): number;
+    private isCompressed;
+    private writeMeta;
+    private readMeta;
     get totalDiskBytes(): number;
     get segmentCount(): number;
     close(): void;

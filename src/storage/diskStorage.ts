@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { LogRecord } from '../interface/interface';
+import { gunzipSync, gzipSync } from 'zlib';
 
 interface SegmentMeta {
   filePath: string;
@@ -16,6 +17,7 @@ interface SegmentMeta {
 const MAX_SEGMENT_BYTES = 256 * 1024 * 1024;
 const FLUSH_INTERVAL_MS = 50;
 const FLUSH_BATCH_SIZE = 500;
+const GZIP_LEVEL = 1;
 
 export default class DiskStore {
   private currentFd: number = -1;
@@ -26,11 +28,14 @@ export default class DiskStore {
   private diskQueue: string[] = [];
   private readonly MAX_QUEUE = 100_000;
   private isWorkerRunning = false;
+  private readonly compress: boolean;
 
   constructor(
     private readonly dir: string,
     private readonly topic: string,
+    compress: boolean = false,
   ) {
+    this.compress = compress;
     fs.mkdirSync(this.segDir, { recursive: true });
     this.openOrCreateActiveSegment();
     this.startWorker();
@@ -110,8 +115,20 @@ export default class DiskStore {
       if (this.currentSegmentSize + byteLength >= MAX_SEGMENT_BYTES)
         this.openSegment(this.currentSegmentBase + 1);
 
-      fs.writeSync(this.currentFd, payload, null, 'utf-8');
-      this.currentSegmentSize += byteLength;
+      if (this.compress) {
+        // compressed — [4-byte length][gzip data]
+        const raw = Buffer.from(payload, 'utf-8');
+        const compressed = gzipSync(raw, { level: GZIP_LEVEL });
+        const header = Buffer.alloc(4);
+        header.writeUInt32BE(compressed.length, 0);
+        fs.writeSync(this.currentFd, Buffer.concat([header, compressed]));
+        this.currentSegmentSize += 4 + compressed.length;
+      } else {
+        // raw — plain JSON lines
+        fs.writeSync(this.currentFd, payload, null, 'utf-8');
+        this.currentSegmentSize += byteLength;
+      }
+
       this.totalFlushed += batch.length;
 
       if (this.diskQueue.length > 0) setImmediate(tick);
@@ -172,16 +189,43 @@ export default class DiskStore {
   }
 
   *replayAll(): Generator<LogRecord> {
+    const meta = this.readMeta();
     for (const file of this.listPaths()) {
-      const content = fs.readFileSync(file, 'utf-8');
-      for (const line of content.split('\n')) {
-        if (!line.trim()) continue;
-        try {
-          yield JSON.parse(line) as LogRecord;
-        } catch {
-          /* skip */
-        }
+      if (meta.compression) {
+        yield* this.readCompressed(file);
+      } else {
+        yield* this.readRaw(file);
       }
+    }
+  }
+  private *readRaw(file: string): Generator<LogRecord> {
+    const content = fs.readFileSync(file, 'utf-8');
+    for (const line of content.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        yield JSON.parse(line) as LogRecord;
+      } catch {}
+    }
+  }
+
+  private *readCompressed(file: string): Generator<LogRecord> {
+    const buf = fs.readFileSync(file);
+    let pos = 0;
+    while (pos + 4 <= buf.length) {
+      const chunkLen = buf.readUInt32BE(pos);
+      pos += 4;
+      if (pos + chunkLen > buf.length) break;
+      const compressed = buf.subarray(pos, pos + chunkLen);
+      pos += chunkLen;
+      try {
+        const raw = gunzipSync(compressed).toString('utf-8');
+        for (const line of raw.split('\n')) {
+          if (!line.trim()) continue;
+          try {
+            yield JSON.parse(line) as LogRecord;
+          } catch {}
+        }
+      } catch {}
     }
   }
 
@@ -237,6 +281,31 @@ export default class DiskStore {
       console.error(`[stream] failed to delete segment ${file}:`, e);
       return 0;
     }
+  }
+
+  private isCompressed(file: string): boolean {
+    const fd = fs.openSync(file, 'r');
+    const buf = Buffer.alloc(2);
+    fs.readSync(fd, buf, 0, 2, 0);
+    fs.closeSync(fd);
+    return buf[0] === 0x1f && buf[1] === 0x8b;
+  }
+
+  private writeMeta(): void {
+    const meta = { compression: this.compress };
+    fs.writeFileSync(
+      path.join(this.segDir, '_meta.json'),
+      JSON.stringify(meta),
+    );
+  }
+
+  private readMeta(): { compression: boolean } {
+    try {
+      const metaPath = path.join(this.segDir, '_meta.json');
+      if (fs.existsSync(metaPath))
+        return JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+    } catch {}
+    return { compression: false };
   }
 
   get totalDiskBytes(): number {

@@ -18,7 +18,7 @@ export declare class Topic<T = Record<string, unknown>> {
     private writeCount;
     private lastStatTs;
     writesPerSec: number;
-    constructor(name: string, dataDir: string);
+    constructor(name: string, dataDir: string, compression?: boolean);
     private replayFromDisk;
     trackWrite(): void;
 }

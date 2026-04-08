@@ -45,7 +45,7 @@ const bufferMemory_1 = __importDefault(require("../storage/bufferMemory"));
 const diskStorage_1 = __importDefault(require("../storage/diskStorage"));
 const secondaryIndex_1 = __importDefault(require("../storage/secondaryIndex"));
 class Topic {
-    constructor(name, dataDir) {
+    constructor(name, dataDir, compression = false) {
         this.name = name;
         this.memory = new bufferMemory_1.default(50000);
         this.index = new secondaryIndex_1.default();
@@ -54,7 +54,7 @@ class Topic {
         this.writeCount = 0;
         this.lastStatTs = Date.now();
         this.writesPerSec = 0;
-        this.disk = new diskStorage_1.default(dataDir, name);
+        this.disk = new diskStorage_1.default(dataDir, name, compression);
         this.replayFromDisk();
     }
     replayFromDisk() {
@@ -112,8 +112,9 @@ class EventStreaming {
         }
     }
     getTopic(name) {
+        var _a;
         if (!this.topics.has(name))
-            this.topics.set(name, new Topic(name, this.dataDir));
+            this.topics.set(name, new Topic(name, this.dataDir, (_a = this.options.compression) !== null && _a !== void 0 ? _a : false));
         return this.topics.get(name);
     }
     loadOffsets() {

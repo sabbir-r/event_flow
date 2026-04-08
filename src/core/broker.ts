@@ -37,8 +37,9 @@ export class Topic<T = Record<string, unknown>> {
   constructor(
     public readonly name: string,
     dataDir: string,
+    compression: boolean = false,
   ) {
-    this.disk = new DiskStore(dataDir, name);
+    this.disk = new DiskStore(dataDir, name, compression);
     this.replayFromDisk();
   }
 
@@ -106,7 +107,10 @@ export class EventStreaming {
 
   private getTopic(name: string): Topic {
     if (!this.topics.has(name))
-      this.topics.set(name, new Topic(name, this.dataDir));
+      this.topics.set(
+        name,
+        new Topic(name, this.dataDir, this.options.compression ?? false),
+      );
     return this.topics.get(name)!;
   }
 
